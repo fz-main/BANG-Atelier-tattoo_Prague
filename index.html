@@ -1,0 +1,1352 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BANG Atelier — Tattoo Studio Prague</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Cinzel:wght@400;700;900&family=Inter:wght@300;400;500&family=Playfair+Display:ital,wght@1,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #0a0a0a;
+    --bone: #f0ebe0;
+    --red: #c0392b;
+    --gold: #b8963e;
+    --ash: #1a1a1a;
+    --smoke: #2a2a2a;
+    --mist: rgba(240,235,224,0.07);
+  }
+
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; overflow-x: hidden; }
+
+  body {
+    background: var(--ink);
+    color: var(--bone);
+    font-family: 'Inter', sans-serif;
+    font-weight: 300;
+    cursor: none;
+    overflow-x: hidden;
+  }
+
+  /* ── CUSTOM CURSOR ── */
+  #cursor {
+    position: fixed; width: 12px; height: 12px;
+    background: var(--red); border-radius: 50%;
+    pointer-events: none; z-index: 9999;
+    transform: translate(-50%,-50%);
+    transition: transform .1s, width .3s, height .3s, background .3s;
+    mix-blend-mode: difference;
+  }
+  #cursor-ring {
+    position: fixed; width: 40px; height: 40px;
+    border: 1px solid rgba(192,57,43,.5); border-radius: 50%;
+    pointer-events: none; z-index: 9998;
+    transform: translate(-50%,-50%);
+    transition: transform .25s cubic-bezier(.17,.67,.83,.67), width .3s, height .3s;
+  }
+  body:has(a:hover) #cursor, body:has(button:hover) #cursor { width: 24px; height: 24px; background: var(--gold); }
+  body:has(a:hover) #cursor-ring, body:has(button:hover) #cursor-ring { width: 60px; height: 60px; border-color: var(--gold); }
+
+  /* ── NOISE OVERLAY ── */
+  body::before {
+    content:''; position:fixed; inset:0; z-index:1;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.04'/%3E%3C/svg%3E");
+    pointer-events:none; opacity:.4;
+  }
+
+  /* ── NAV ── */
+  nav {
+    position: fixed; top: 0; width: 100%; z-index: 100;
+    padding: 20px 5%;
+    display: flex; justify-content: space-between; align-items: center;
+    background: linear-gradient(to bottom, rgba(10,10,10,.95) 0%, transparent 100%);
+    backdrop-filter: blur(0px);
+    transition: backdrop-filter .3s, background .3s;
+  }
+  nav.scrolled { backdrop-filter: blur(16px); background: rgba(10,10,10,.9); }
+  .logo {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(1.8rem, 3vw, 2.4rem);
+    letter-spacing: .15em;
+    color: var(--bone);
+    text-decoration: none;
+  }
+  .logo span { color: var(--red); }
+  .nav-links { display: flex; gap: 2rem; list-style: none; }
+  .nav-links a {
+    color: rgba(240,235,224,.65); text-decoration: none;
+    font-size: .75rem; letter-spacing: .15em; text-transform: uppercase;
+    transition: color .3s;
+  }
+  .nav-links a:hover { color: var(--bone); }
+  .lang-switcher { display: flex; gap: .5rem; }
+  .lang-btn {
+    background: none; border: 1px solid rgba(240,235,224,.2);
+    color: rgba(240,235,224,.5); padding: 4px 10px;
+    font-size: .65rem; letter-spacing: .1em; text-transform: uppercase;
+    cursor: pointer; transition: all .3s; font-family: 'Inter', sans-serif;
+  }
+  .lang-btn.active, .lang-btn:hover { border-color: var(--red); color: var(--bone); background: rgba(192,57,43,.15); }
+  .nav-right { display: flex; gap: 1rem; align-items: center; }
+  .hamburger { display: none; flex-direction: column; gap: 5px; cursor: pointer; padding: 5px; }
+  .hamburger span { width: 26px; height: 1px; background: var(--bone); transition: all .3s; display: block; }
+  .hamburger.open span:nth-child(1) { transform: rotate(45deg) translate(4px,4px); }
+  .hamburger.open span:nth-child(2) { opacity: 0; }
+  .hamburger.open span:nth-child(3) { transform: rotate(-45deg) translate(4px,-4px); }
+
+  /* ── LOADER ── */
+  #loader {
+    position: fixed; inset: 0; z-index: 9000;
+    background: var(--ink);
+    display: flex; align-items: center; justify-content: center;
+    flex-direction: column;
+  }
+  .loader-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(5rem, 15vw, 14rem);
+    letter-spacing: .05em;
+    color: transparent;
+    -webkit-text-stroke: 1px rgba(240,235,224,.15);
+    position: relative;
+    overflow: hidden;
+    animation: loaderPulse 2s ease-in-out;
+  }
+  .loader-title::after {
+    content: attr(data-text);
+    position: absolute; inset: 0;
+    color: var(--bone);
+    -webkit-text-stroke: 0;
+    clip-path: inset(0 100% 0 0);
+    animation: loaderReveal 1.8s cubic-bezier(.77,0,.18,1) forwards;
+    animation-delay: .2s;
+  }
+  @keyframes loaderReveal { to { clip-path: inset(0 0% 0 0); } }
+  @keyframes loaderPulse { 0%,100%{opacity:1} 50%{opacity:.8} }
+  .loader-sub {
+    font-size: .7rem; letter-spacing: .4em; text-transform: uppercase;
+    color: var(--red); margin-top: -1rem;
+    opacity: 0; animation: fadeUp .6s .8s forwards;
+  }
+  .loader-bar {
+    width: 200px; height: 1px; background: rgba(240,235,224,.1);
+    margin-top: 3rem; position: relative; overflow: hidden;
+  }
+  .loader-bar::after {
+    content:''; position: absolute; inset: 0;
+    background: linear-gradient(90deg, transparent, var(--red), transparent);
+    animation: loaderBar 1.8s .3s cubic-bezier(.77,0,.18,1) forwards;
+  }
+  @keyframes loaderBar { from{transform:translateX(-100%)} to{transform:translateX(100%)} }
+  @keyframes fadeUp { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+
+  /* ── HERO ── */
+  #hero {
+    min-height: 100vh; display: flex; align-items: center; justify-content: center;
+    position: relative; overflow: hidden;
+    padding: 10vh 5% 5vh;
+  }
+  .hero-bg {
+    position: absolute; inset: 0; z-index: 0;
+    background:
+      radial-gradient(ellipse 80% 60% at 20% 50%, rgba(192,57,43,.12) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 80% at 80% 30%, rgba(184,150,62,.06) 0%, transparent 60%),
+      radial-gradient(ellipse 40% 40% at 50% 80%, rgba(192,57,43,.05) 0%, transparent 60%);
+    animation: heroBgPulse 8s ease-in-out infinite alternate;
+  }
+  @keyframes heroBgPulse {
+    from { opacity: .7; transform: scale(1); }
+    to { opacity: 1; transform: scale(1.05); }
+  }
+  .hero-grid {
+    position: absolute; inset: 0; z-index: 0;
+    background-image:
+      linear-gradient(rgba(240,235,224,.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(240,235,224,.03) 1px, transparent 1px);
+    background-size: 60px 60px;
+    animation: gridMove 20s linear infinite;
+    mask-image: radial-gradient(ellipse at center, black 30%, transparent 80%);
+  }
+  @keyframes gridMove { from{transform:translateY(0)} to{transform:translateY(60px)} }
+
+  /* Floating ink drops */
+  .ink-drop {
+    position: absolute; border-radius: 50%;
+    background: radial-gradient(circle, rgba(192,57,43,.15), transparent 70%);
+    animation: float 6s ease-in-out infinite;
+    pointer-events: none; z-index: 0;
+  }
+  @keyframes float {
+    0%,100% { transform: translateY(0) scale(1); opacity: .4; }
+    50% { transform: translateY(-30px) scale(1.1); opacity: .7; }
+  }
+
+  .hero-content { position: relative; z-index: 2; text-align: center; max-width: 1100px; }
+  .hero-eyebrow {
+    font-size: .65rem; letter-spacing: .5em; text-transform: uppercase;
+    color: var(--red); margin-bottom: 2rem;
+    opacity: 0; animation: fadeUp .6s 2.2s forwards;
+    display: flex; align-items: center; justify-content: center; gap: 1.5rem;
+  }
+  .hero-eyebrow::before, .hero-eyebrow::after {
+    content:''; width: 40px; height: 1px; background: var(--red);
+  }
+  .hero-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(5rem, 16vw, 18rem);
+    line-height: .85;
+    letter-spacing: -.01em;
+    opacity: 0; animation: heroTitleAnim 1s 2.4s cubic-bezier(.19,1,.22,1) forwards;
+  }
+  @keyframes heroTitleAnim {
+    from { opacity: 0; transform: translateY(60px) scaleY(1.2); }
+    to { opacity: 1; transform: translateY(0) scaleY(1); }
+  }
+  .hero-title .line-red { color: var(--red); display: block; }
+  .hero-title .line-outline {
+    -webkit-text-stroke: 2px rgba(240,235,224,.25);
+    color: transparent;
+    display: block;
+  }
+  .hero-desc {
+    font-size: clamp(.85rem, 1.5vw, 1rem); line-height: 1.8;
+    color: rgba(240,235,224,.55); max-width: 480px; margin: 2.5rem auto;
+    opacity: 0; animation: fadeUp .8s 2.8s forwards;
+  }
+  .hero-cta {
+    display: inline-flex; gap: 1.5rem; align-items: center;
+    opacity: 0; animation: fadeUp .8s 3s forwards;
+  }
+  .btn-primary {
+    background: var(--red); color: var(--bone);
+    padding: 14px 36px; border: none; cursor: pointer;
+    font-family: 'Inter', sans-serif; font-size: .75rem;
+    letter-spacing: .2em; text-transform: uppercase;
+    text-decoration: none; display: inline-block;
+    position: relative; overflow: hidden;
+    transition: transform .3s;
+    clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px));
+  }
+  .btn-primary::before {
+    content:''; position: absolute; inset:0;
+    background: linear-gradient(135deg, transparent 30%, rgba(255,255,255,.15) 50%, transparent 70%);
+    transform: translateX(-100%); transition: transform .5s;
+  }
+  .btn-primary:hover::before { transform: translateX(100%); }
+  .btn-primary:hover { transform: translateY(-2px); }
+  .btn-secondary {
+    color: rgba(240,235,224,.65); font-size: .75rem;
+    letter-spacing: .2em; text-transform: uppercase;
+    text-decoration: none; display: flex; align-items: center; gap: .7rem;
+    transition: color .3s;
+  }
+  .btn-secondary svg { transition: transform .3s; }
+  .btn-secondary:hover { color: var(--bone); }
+  .btn-secondary:hover svg { transform: translateX(5px); }
+
+  .hero-scroll {
+    position: absolute; bottom: 3rem; left: 50%; transform: translateX(-50%);
+    z-index: 2; display: flex; flex-direction: column; align-items: center; gap: .8rem;
+    opacity: 0; animation: fadeUp .6s 3.4s forwards;
+  }
+  .scroll-line {
+    width: 1px; height: 60px; background: linear-gradient(to bottom, var(--red), transparent);
+    animation: scrollLine 2s ease-in-out infinite;
+  }
+  @keyframes scrollLine { 0%,100%{transform:scaleY(0);transform-origin:top} 50%{transform:scaleY(1)} }
+  .scroll-text { font-size: .55rem; letter-spacing: .3em; text-transform: uppercase; color: rgba(240,235,224,.3); }
+
+  /* ── SECTION BASE ── */
+  section { position: relative; z-index: 2; }
+  .section-label {
+    font-size: .6rem; letter-spacing: .5em; text-transform: uppercase;
+    color: var(--red); margin-bottom: 1.5rem;
+    display: flex; align-items: center; gap: 1rem;
+  }
+  .section-label::after { content:''; flex: 1; height: 1px; background: rgba(192,57,43,.3); }
+  .section-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(3rem, 8vw, 7rem);
+    line-height: .9; letter-spacing: .02em;
+  }
+  .reveal { opacity: 0; transform: translateY(40px); transition: opacity .8s, transform .8s cubic-bezier(.19,1,.22,1); }
+  .reveal.visible { opacity: 1; transform: none; }
+
+  /* ── INTRO STRIP ── */
+  #intro {
+    padding: 6rem 5%;
+    display: grid; grid-template-columns: 1fr 1fr; gap: 8%;
+    align-items: center;
+  }
+  .intro-visual {
+    position: relative; aspect-ratio: 3/4; max-width: 380px;
+  }
+  .intro-frame {
+    position: absolute; inset: 0;
+    border: 1px solid rgba(240,235,224,.08);
+    background: linear-gradient(135deg, rgba(192,57,43,.05), transparent 60%);
+  }
+  .intro-frame::before {
+    content:''; position: absolute; top: -1px; left: 20px; right: 20px; height: 2px;
+    background: linear-gradient(90deg, transparent, var(--red), transparent);
+  }
+  .intro-frame::after {
+    content:''; position: absolute; inset: 10px;
+    border: 1px solid rgba(240,235,224,.04);
+  }
+  .intro-letter {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22rem; color: transparent;
+    -webkit-text-stroke: 1px rgba(240,235,224,.04);
+    user-select: none; pointer-events: none;
+  }
+  .intro-stat {
+    position: absolute; padding: 1.2rem 1.5rem;
+    background: rgba(10,10,10,.9); border: 1px solid rgba(240,235,224,.08);
+    backdrop-filter: blur(10px);
+  }
+  .intro-stat:nth-child(2) { bottom: -2rem; right: -2rem; }
+  .intro-stat:nth-child(3) { top: 2rem; right: -2rem; }
+  .stat-number {
+    font-family: 'Bebas Neue', sans-serif; font-size: 2.5rem;
+    color: var(--red); line-height: 1;
+  }
+  .stat-label { font-size: .6rem; letter-spacing: .2em; text-transform: uppercase; color: rgba(240,235,224,.4); margin-top: .2rem; }
+
+  /* ── ADVANTAGES ── */
+  #advantages {
+    padding: 8rem 5%;
+    background: linear-gradient(180deg, transparent, rgba(192,57,43,.03) 50%, transparent);
+  }
+  .adv-header { margin-bottom: 5rem; max-width: 700px; }
+  .adv-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 1.5px;
+    background: rgba(240,235,224,.06);
+  }
+  .adv-card {
+    background: var(--ink);
+    padding: 3rem 2.5rem;
+    position: relative; overflow: hidden;
+    transition: background .4s;
+  }
+  .adv-card::before {
+    content:''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg, transparent, var(--red), transparent);
+    transform: scaleX(0); transform-origin: center;
+    transition: transform .5s cubic-bezier(.19,1,.22,1);
+  }
+  .adv-card::after {
+    content:''; position: absolute; inset: 0;
+    background: radial-gradient(ellipse at top left, rgba(192,57,43,.08), transparent 60%);
+    opacity: 0; transition: opacity .4s;
+  }
+  .adv-card:hover { background: rgba(20,20,20,1); }
+  .adv-card:hover::before { transform: scaleX(1); }
+  .adv-card:hover::after { opacity: 1; }
+  .adv-card:hover .adv-num { color: var(--red); }
+  .adv-num {
+    font-family: 'Bebas Neue', sans-serif; font-size: 5rem;
+    color: rgba(240,235,224,.05);
+    line-height: 1; margin-bottom: 1rem;
+    transition: color .4s;
+    position: relative; z-index: 1;
+  }
+  .adv-title {
+    font-family: 'Bebas Neue', sans-serif; font-size: 1.4rem;
+    letter-spacing: .05em; margin-bottom: .8rem;
+    position: relative; z-index: 1;
+  }
+  .adv-text { font-size: .8rem; line-height: 1.8; color: rgba(240,235,224,.45); position: relative; z-index: 1; }
+  .adv-icon { font-size: 1.8rem; margin-bottom: 1.5rem; position: relative; z-index: 1; }
+
+  /* ── SERVICES ── */
+  #services { padding: 8rem 5%; }
+  .services-header { margin-bottom: 5rem; display: flex; justify-content: space-between; align-items: flex-end; gap: 2rem; flex-wrap: wrap; }
+  .services-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1px; background: rgba(240,235,224,.05);
+  }
+  .service-card {
+    background: var(--ink); padding: 3rem;
+    position: relative; overflow: hidden;
+    transition: transform .4s cubic-bezier(.19,1,.22,1);
+    cursor: pointer;
+  }
+  .service-card::before {
+    content:''; position: absolute; inset: 0;
+    background: linear-gradient(135deg, rgba(192,57,43,.1) 0%, transparent 60%);
+    opacity: 0; transition: opacity .4s;
+  }
+  .service-card:hover { transform: translateY(-4px); background: #111; }
+  .service-card:hover::before { opacity: 1; }
+  .service-card:hover .service-arrow { opacity: 1; transform: translateX(0); }
+  .service-tag {
+    font-size: .55rem; letter-spacing: .3em; text-transform: uppercase;
+    color: var(--red); margin-bottom: 2rem;
+    padding: 4px 10px; border: 1px solid rgba(192,57,43,.3);
+    display: inline-block;
+  }
+  .service-name {
+    font-family: 'Bebas Neue', sans-serif; font-size: 2.2rem;
+    letter-spacing: .03em; margin-bottom: 1rem;
+  }
+  .service-desc { font-size: .8rem; line-height: 1.8; color: rgba(240,235,224,.45); margin-bottom: 2rem; }
+  .service-price {
+    font-family: 'Bebas Neue', sans-serif; font-size: 1.8rem;
+    color: var(--gold);
+  }
+  .service-price span { font-family: 'Inter', sans-serif; font-size: .7rem; color: rgba(240,235,224,.35); font-weight: 300; }
+  .service-arrow {
+    position: absolute; bottom: 2rem; right: 2rem;
+    opacity: 0; transform: translateX(-10px);
+    transition: all .3s; font-size: 1.4rem; color: var(--red);
+  }
+
+  /* ── GALLERY MARQUEE ── */
+  #gallery { padding: 6rem 0; overflow: hidden; }
+  .gallery-label { padding: 0 5%; margin-bottom: 3rem; }
+  .marquee-wrap { display: flex; gap: 1px; width: max-content; animation: marquee 20s linear infinite; }
+  .marquee-wrap:hover { animation-play-state: paused; }
+  @keyframes marquee { from{transform:translateX(0)} to{transform:translateX(-50%)} }
+  .gallery-item {
+    width: 280px; height: 350px; flex-shrink: 0;
+    background: var(--ash);
+    position: relative; overflow: hidden;
+    border: 1px solid rgba(240,235,224,.05);
+  }
+  .gallery-item-bg {
+    position: absolute; inset: 0;
+    transition: transform .6s cubic-bezier(.19,1,.22,1);
+  }
+  .gallery-item:hover .gallery-item-bg { transform: scale(1.08); }
+  .gallery-item-overlay {
+    position: absolute; inset: 0;
+    background: linear-gradient(to top, rgba(10,10,10,.9) 0%, transparent 60%);
+    opacity: 0; transition: opacity .4s;
+    display: flex; flex-direction: column; justify-content: flex-end; padding: 1.5rem;
+  }
+  .gallery-item:hover .gallery-item-overlay { opacity: 1; }
+  .gallery-item-label { font-size: .65rem; letter-spacing: .2em; text-transform: uppercase; color: var(--red); }
+  /* Tattoo style pattern backgrounds */
+  .gi-1 { background: linear-gradient(135deg, #1a0a0a 0%, #2a0f0f 40%, #1a0a0a 100%); }
+  .gi-2 { background: linear-gradient(45deg, #0a0a1a 0%, #0f0f2a 50%, #0a0a0a 100%); }
+  .gi-3 { background: linear-gradient(90deg, #0a1a0a 0%, #0f2a0f 40%, #0a0a0a 100%); }
+  .gi-4 { background: linear-gradient(135deg, #1a1a0a 0%, #2a250a 50%, #0a0a0a 100%); }
+  .gi-5 { background: linear-gradient(220deg, #1a0a1a 0%, #2a0f2a 40%, #0a0a0a 100%); }
+
+  /* SVG tattoo patterns */
+  .gallery-item svg { position: absolute; inset: 0; width: 100%; height: 100%; opacity: .4; }
+
+  /* ── BOOKING ── */
+  #booking {
+    padding: 8rem 5%;
+    background: linear-gradient(135deg, rgba(192,57,43,.05) 0%, transparent 50%);
+    position: relative; overflow: hidden;
+  }
+  #booking::before {
+    content:''; position: absolute; top: -50%; left: -20%; width: 80%; height: 200%;
+    background: radial-gradient(ellipse, rgba(192,57,43,.06) 0%, transparent 60%);
+    pointer-events: none;
+  }
+  .booking-inner { display: grid; grid-template-columns: 1fr 1fr; gap: 8%; align-items: center; }
+  .booking-text .section-title { margin-bottom: 2rem; }
+  .booking-text p { font-size: .9rem; line-height: 1.8; color: rgba(240,235,224,.5); margin-bottom: 3rem; }
+  .booking-contact { display: flex; flex-direction: column; gap: 1rem; margin-bottom: 2.5rem; }
+  .contact-item {
+    display: flex; align-items: center; gap: 1rem;
+    font-size: .85rem; color: rgba(240,235,224,.65);
+    text-decoration: none; transition: color .3s;
+  }
+  .contact-item:hover { color: var(--bone); }
+  .contact-icon { color: var(--red); font-size: 1rem; width: 20px; text-align: center; }
+  .booking-form { display: flex; flex-direction: column; gap: 1rem; }
+  .form-field { position: relative; }
+  .form-field input, .form-field textarea, .form-field select {
+    width: 100%; background: rgba(240,235,224,.03);
+    border: 1px solid rgba(240,235,224,.08);
+    color: var(--bone); padding: 14px 18px;
+    font-family: 'Inter', sans-serif; font-size: .8rem;
+    outline: none; transition: border-color .3s, background .3s;
+    appearance: none;
+  }
+  .form-field textarea { height: 100px; resize: none; }
+  .form-field input:focus, .form-field textarea:focus, .form-field select:focus {
+    border-color: rgba(192,57,43,.5); background: rgba(192,57,43,.03);
+  }
+  .form-field input::placeholder, .form-field textarea::placeholder { color: rgba(240,235,224,.25); }
+  .form-field select option { background: #1a1a1a; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+
+  /* ── MAP ── */
+  #map-section { padding: 6rem 5%; }
+  .map-header { margin-bottom: 3rem; }
+  .map-wrap {
+    position: relative; border: 1px solid rgba(240,235,224,.07);
+    overflow: hidden;
+  }
+  .map-wrap::before {
+    content:''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+    background: linear-gradient(90deg, transparent, var(--red), var(--gold), transparent);
+    z-index: 1;
+  }
+  #gmap { width: 100%; height: 450px; filter: grayscale(1) invert(1) contrast(.8) brightness(.6); }
+  .map-overlay-info {
+    position: absolute; top: 2rem; left: 2rem; z-index: 1;
+    background: rgba(10,10,10,.92); backdrop-filter: blur(10px);
+    border: 1px solid rgba(240,235,224,.08);
+    padding: 1.5rem 2rem;
+  }
+  .map-studio-name { font-family: 'Bebas Neue', sans-serif; font-size: 1.5rem; letter-spacing: .05em; margin-bottom: .5rem; }
+  .map-studio-addr { font-size: .75rem; color: rgba(240,235,224,.45); letter-spacing: .05em; }
+  .map-hours { margin-top: 1rem; }
+  .map-hours-item { font-size: .7rem; color: rgba(240,235,224,.4); margin-top: .3rem; }
+  .map-hours-item strong { color: rgba(240,235,224,.7); }
+
+  /* ── FOOTER ── */
+  footer {
+    padding: 4rem 5% 2rem;
+    border-top: 1px solid rgba(240,235,224,.06);
+    display: grid; grid-template-columns: 1fr auto 1fr; gap: 3rem; align-items: center;
+  }
+  .footer-logo { font-family: 'Bebas Neue', sans-serif; font-size: 2.5rem; letter-spacing: .1em; }
+  .footer-logo span { color: var(--red); }
+  .footer-copy { font-size: .65rem; letter-spacing: .15em; color: rgba(240,235,224,.25); text-align: center; }
+  .footer-socials { display: flex; gap: 1.5rem; justify-content: flex-end; }
+  .social-link {
+    width: 40px; height: 40px; border: 1px solid rgba(240,235,224,.12);
+    display: flex; align-items: center; justify-content: center;
+    text-decoration: none; color: rgba(240,235,224,.4);
+    font-size: .7rem; letter-spacing: .05em;
+    transition: all .3s; text-transform: uppercase;
+  }
+  .social-link:hover { border-color: var(--red); color: var(--bone); background: rgba(192,57,43,.1); }
+
+  /* ── MOBILE ── */
+  @media (max-width: 900px) {
+    #intro { grid-template-columns: 1fr; }
+    .intro-visual { max-width: 100%; margin: 0 auto 4rem; }
+    .booking-inner { grid-template-columns: 1fr; }
+    footer { grid-template-columns: 1fr; text-align: center; }
+    .footer-socials { justify-content: center; }
+    .services-header { flex-direction: column; align-items: flex-start; }
+    #cursor, #cursor-ring { display: none; }
+    body { cursor: auto; }
+    .form-row { grid-template-columns: 1fr; }
+    .map-overlay-info { position: static; margin-top: 1rem; }
+  }
+  @media (max-width: 600px) {
+    .nav-links { display: none; }
+    .nav-links.mobile-open {
+      display: flex; flex-direction: column;
+      position: fixed; inset: 0; background: rgba(10,10,10,.98);
+      z-index: 99; align-items: center; justify-content: center;
+      gap: 2.5rem;
+    }
+    .nav-links.mobile-open a { font-size: 1.4rem; }
+    .hamburger { display: flex; }
+    .hero-title { font-size: clamp(4rem, 22vw, 8rem); }
+    .hero-cta { flex-direction: column; gap: 1rem; }
+    .stat-number { font-size: 2rem; }
+  }
+  @media (max-width: 400px) {
+    .logo { font-size: 1.4rem; }
+    .adv-grid { grid-template-columns: 1fr; }
+    .services-grid { grid-template-columns: 1fr; }
+  }
+
+  /* ── MISC ── */
+  .divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(240,235,224,.06) 20%, rgba(240,235,224,.06) 80%, transparent);
+    margin: 0 5%;
+  }
+  [data-lang] { display: none; }
+  [data-lang].active-lang { display: block; }
+  span[data-lang] { display: none; }
+  span[data-lang].active-lang { display: inline; }
+
+  /* Gradient text */
+  .grad-text {
+    background: linear-gradient(135deg, var(--bone) 0%, var(--gold) 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: var(--ink); }
+  ::-webkit-scrollbar-thumb { background: var(--red); }
+</style>
+</head>
+<body>
+
+<!-- CURSOR -->
+<div id="cursor"></div>
+<div id="cursor-ring"></div>
+
+<!-- LOADER -->
+<div id="loader">
+  <div class="loader-title" data-text="BANG">BANG</div>
+  <div class="loader-sub">Atelier Tattoo · Prague</div>
+  <div class="loader-bar"></div>
+</div>
+
+<!-- NAV -->
+<nav id="navbar">
+  <a href="#" class="logo">BANG<span>.</span></a>
+  <ul class="nav-links" id="navLinks">
+    <li><a href="#intro"><span data-lang="cs" class="active-lang">Studio</span><span data-lang="en">Studio</span><span data-lang="de">Studio</span><span data-lang="ru">Студио</span></a></li>
+    <li><a href="#advantages"><span data-lang="cs" class="active-lang">Výhody</span><span data-lang="en">Why Us</span><span data-lang="de">Vorteile</span><span data-lang="ru">Преимущества</span></a></li>
+    <li><a href="#services"><span data-lang="cs" class="active-lang">Služby</span><span data-lang="en">Services</span><span data-lang="de">Leistungen</span><span data-lang="ru">Услуги</span></a></li>
+    <li><a href="#booking"><span data-lang="cs" class="active-lang">Kontakt</span><span data-lang="en">Contact</span><span data-lang="de">Kontakt</span><span data-lang="ru">Контакт</span></a></li>
+  </ul>
+  <div class="nav-right">
+    <div class="lang-switcher">
+      <button class="lang-btn active" onclick="setLang('cs')">CS</button>
+      <button class="lang-btn" onclick="setLang('en')">EN</button>
+      <button class="lang-btn" onclick="setLang('de')">DE</button>
+      <button class="lang-btn" onclick="setLang('ru')">RU</button>
+    </div>
+    <div class="hamburger" id="hamburger" onclick="toggleMenu()">
+      <span></span><span></span><span></span>
+    </div>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section id="hero">
+  <div class="hero-bg"></div>
+  <div class="hero-grid"></div>
+  <div class="ink-drop" style="width:300px;height:300px;top:20%;left:10%;animation-delay:0s;animation-duration:7s"></div>
+  <div class="ink-drop" style="width:200px;height:200px;top:60%;right:15%;animation-delay:2s;animation-duration:9s"></div>
+  <div class="ink-drop" style="width:150px;height:150px;bottom:20%;left:40%;animation-delay:4s;animation-duration:6s"></div>
+
+  <div class="hero-content">
+    <div class="hero-eyebrow">
+      <span data-lang="cs" class="active-lang">Praha · Vršovice · Od roku 2014</span>
+      <span data-lang="en">Prague · Vršovice · Since 2014</span>
+      <span data-lang="de">Prag · Vršovice · Seit 2014</span>
+      <span data-lang="ru">Прага · Вршовице · С 2014 года</span>
+    </div>
+    <h1 class="hero-title">
+      <span>BANG</span>
+      <span class="line-red">ATELIER</span>
+      <span class="line-outline">TATTOO</span>
+    </h1>
+    <p class="hero-desc">
+      <span data-lang="cs" class="active-lang">Umělecké tetovací studio v srdci Prahy. Každý design je jedinečný výtvor vašeho příběhu.</span>
+      <span data-lang="en">Artistic tattoo studio in the heart of Prague. Every design is a unique creation of your story.</span>
+      <span data-lang="de">Künstlerisches Tattoostudio im Herzen Prags. Jedes Design ist ein einzigartiges Werk Ihrer Geschichte.</span>
+      <span data-lang="ru">Художественная тату-студия в сердце Праги. Каждый дизайн — уникальное воплощение вашей истории.</span>
+    </p>
+    <div class="hero-cta">
+      <a href="#booking" class="btn-primary">
+        <span data-lang="cs" class="active-lang">Rezervovat termín</span>
+        <span data-lang="en">Book Appointment</span>
+        <span data-lang="de">Termin buchen</span>
+        <span data-lang="ru">Записаться</span>
+      </a>
+      <a href="#gallery" class="btn-secondary">
+        <span data-lang="cs" class="active-lang">Naše práce</span>
+        <span data-lang="en">Our Work</span>
+        <span data-lang="de">Unsere Arbeit</span>
+        <span data-lang="ru">Наши работы</span>
+        <svg width="20" height="12" viewBox="0 0 20 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M0 6H18M14 1L19 6L14 11" stroke="currentColor" stroke-width="1"/>
+        </svg>
+      </a>
+    </div>
+  </div>
+
+  <div class="hero-scroll">
+    <div class="scroll-line"></div>
+    <div class="scroll-text">scroll</div>
+  </div>
+</section>
+
+<!-- INTRO -->
+<section id="intro">
+  <div class="intro-visual reveal">
+    <div class="intro-frame">
+      <div class="intro-letter">B</div>
+    </div>
+    <div class="intro-stat">
+      <div class="stat-number">10+</div>
+      <div class="stat-label">
+        <span data-lang="cs" class="active-lang">Let zkušeností</span>
+        <span data-lang="en">Years of experience</span>
+        <span data-lang="de">Jahre Erfahrung</span>
+        <span data-lang="ru">Лет опыта</span>
+      </div>
+    </div>
+    <div class="intro-stat">
+      <div class="stat-number">2.8K+</div>
+      <div class="stat-label">
+        <span data-lang="cs" class="active-lang">Spokojení klienti</span>
+        <span data-lang="en">Happy clients</span>
+        <span data-lang="de">Zufriedene Kunden</span>
+        <span data-lang="ru">Довольных клиентов</span>
+      </div>
+    </div>
+  </div>
+  <div class="intro-text reveal">
+    <div class="section-label">
+      <span data-lang="cs" class="active-lang">O nás</span>
+      <span data-lang="en">About us</span>
+      <span data-lang="de">Über uns</span>
+      <span data-lang="ru">О нас</span>
+    </div>
+    <h2 class="section-title">
+      <span data-lang="cs" class="active-lang">UMĚNÍ<br>NA KŮŽI</span>
+      <span data-lang="en">ART ON<br>SKIN</span>
+      <span data-lang="de">KUNST<br>AUF HAUT</span>
+      <span data-lang="ru">ИСКУССТВО<br>НА КОЖЕ</span>
+    </h2>
+    <p style="margin-top:2rem;font-size:.9rem;line-height:1.9;color:rgba(240,235,224,.5);max-width:480px">
+      <span data-lang="cs" class="active-lang">BANG Atelier je tattoo studio v Praze 10 – Vršovicích, kde se setkává řemeslná dokonalost s výtvarnou originalitou. Naši umělci pracují ve všech stylech a každé tetování přizpůsobují osobnosti klienta.</span>
+      <span data-lang="en">BANG Atelier is a tattoo studio in Prague 10 – Vršovice, where craft perfection meets artistic originality. Our artists work in all styles, tailoring each tattoo to the client's personality.</span>
+      <span data-lang="de">BANG Atelier ist ein Tattoostudio in Prag 10 – Vršovice, wo handwerkliche Perfektion auf künstlerische Originalität trifft. Unsere Künstler arbeiten in allen Stilen.</span>
+      <span data-lang="ru">BANG Atelier — тату-студия в Праге 10 – Вршовице, где мастерство встречается с художественной оригинальностью. Наши художники работают во всех стилях.</span>
+    </p>
+    <div style="display:flex;gap:3rem;margin-top:3rem;flex-wrap:wrap">
+      <div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:3rem;color:var(--red)">100%</div>
+        <div style="font-size:.65rem;letter-spacing:.2em;text-transform:uppercase;color:rgba(240,235,224,.35)">
+          <span data-lang="cs" class="active-lang">Originální design</span>
+          <span data-lang="en">Original design</span>
+          <span data-lang="de">Originales Design</span>
+          <span data-lang="ru">Оригинальный дизайн</span>
+        </div>
+      </div>
+      <div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:3rem;color:var(--red)">5★</div>
+        <div style="font-size:.65rem;letter-spacing:.2em;text-transform:uppercase;color:rgba(240,235,224,.35)">
+          <span data-lang="cs" class="active-lang">Hodnocení klientů</span>
+          <span data-lang="en">Client rating</span>
+          <span data-lang="de">Kundenbewertung</span>
+          <span data-lang="ru">Рейтинг клиентов</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ADVANTAGES -->
+<section id="advantages">
+  <div class="adv-header reveal">
+    <div class="section-label">
+      <span data-lang="cs" class="active-lang">Proč my</span>
+      <span data-lang="en">Why us</span>
+      <span data-lang="de">Warum wir</span>
+      <span data-lang="ru">Почему мы</span>
+    </div>
+    <h2 class="section-title">
+      <span data-lang="cs" class="active-lang">NAŠE<br>VÝHODY</span>
+      <span data-lang="en">OUR<br>ADVANTAGES</span>
+      <span data-lang="de">UNSERE<br>VORTEILE</span>
+      <span data-lang="ru">НАШИ<br>ПРЕИМУЩЕСТВА</span>
+    </h2>
+  </div>
+  <div class="adv-grid">
+    <div class="adv-card reveal">
+      <div class="adv-num">01</div>
+      <div class="adv-icon">✦</div>
+      <div class="adv-title">
+        <span data-lang="cs" class="active-lang">Zkušení umělci</span>
+        <span data-lang="en">Experienced artists</span>
+        <span data-lang="de">Erfahrene Künstler</span>
+        <span data-lang="ru">Опытные мастера</span>
+      </div>
+      <p class="adv-text">
+        <span data-lang="cs" class="active-lang">Naši umělci mají více než 10 let praxe v různých technikách a stylech tetování.</span>
+        <span data-lang="en">Our artists have over 10 years of experience across various tattoo techniques and styles.</span>
+        <span data-lang="de">Unsere Künstler verfügen über 10+ Jahre Erfahrung in verschiedenen Tattoo-Techniken.</span>
+        <span data-lang="ru">Наши мастера имеют более 10 лет опыта в различных техниках и стилях тату.</span>
+      </p>
+    </div>
+    <div class="adv-card reveal" style="transition-delay:.1s">
+      <div class="adv-num">02</div>
+      <div class="adv-icon">◈</div>
+      <div class="adv-title">
+        <span data-lang="cs" class="active-lang">Hygienické záruky</span>
+        <span data-lang="en">Hygienic standards</span>
+        <span data-lang="de">Hygiene-Standards</span>
+        <span data-lang="ru">Гигиенические стандарты</span>
+      </div>
+      <p class="adv-text">
+        <span data-lang="cs" class="active-lang">Pracujeme s jednorázovými nástroji a dezinfekčními protokoly nejvyšší úrovně.</span>
+        <span data-lang="en">We use disposable tools and top-tier disinfection protocols for total safety.</span>
+        <span data-lang="de">Wir verwenden Einweginstrumente und höchste Desinfektionsprotokolle.</span>
+        <span data-lang="ru">Используем одноразовые инструменты и дезинфекционные протоколы высшего уровня.</span>
+      </p>
+    </div>
+    <div class="adv-card reveal" style="transition-delay:.2s">
+      <div class="adv-num">03</div>
+      <div class="adv-icon">⬡</div>
+      <div class="adv-title">
+        <span data-lang="cs" class="active-lang">Individuální přístup</span>
+        <span data-lang="en">Individual approach</span>
+        <span data-lang="de">Individueller Ansatz</span>
+        <span data-lang="ru">Индивидуальный подход</span>
+      </div>
+      <p class="adv-text">
+        <span data-lang="cs" class="active-lang">Každý návrh vytváříme od nuly s přihlédnutím k vaší osobnosti a přáním.</span>
+        <span data-lang="en">Every design is created from scratch, tailored to your personality and wishes.</span>
+        <span data-lang="de">Jedes Design wird von Grund auf neu gestaltet, angepasst an Ihre Persönlichkeit.</span>
+        <span data-lang="ru">Каждый дизайн создаётся с нуля с учётом вашей личности и пожеланий.</span>
+      </p>
+    </div>
+    <div class="adv-card reveal" style="transition-delay:.3s">
+      <div class="adv-num">04</div>
+      <div class="adv-icon">◉</div>
+      <div class="adv-title">
+        <span data-lang="cs" class="active-lang">Veškeré styly</span>
+        <span data-lang="en">All styles</span>
+        <span data-lang="de">Alle Stile</span>
+        <span data-lang="ru">Все стили</span>
+      </div>
+      <p class="adv-text">
+        <span data-lang="cs" class="active-lang">Blackwork, realism, minimalism, Japanese, geometric — ovládáme všechny styly.</span>
+        <span data-lang="en">Blackwork, realism, minimalism, Japanese, geometric — we master all styles.</span>
+        <span data-lang="de">Blackwork, Realismus, Minimalismus, Japanisch, Geometrisch — wir beherrschen alle Stile.</span>
+        <span data-lang="ru">Blackwork, реализм, минимализм, японский, геометрия — мы владеем всеми стилями.</span>
+      </p>
+    </div>
+    <div class="adv-card reveal" style="transition-delay:.4s">
+      <div class="adv-num">05</div>
+      <div class="adv-icon">★</div>
+      <div class="adv-title">
+        <span data-lang="cs" class="active-lang">Péče po tetování</span>
+        <span data-lang="en">Aftercare support</span>
+        <span data-lang="de">Nachsorge-Support</span>
+        <span data-lang="ru">Уход после тату</span>
+      </div>
+      <p class="adv-text">
+        <span data-lang="cs" class="active-lang">Poskytneme vám kompletní průvodce péčí a jsme k dispozici s radami i po proceduře.</span>
+        <span data-lang="en">We provide complete aftercare guidance and remain available for advice after the session.</span>
+        <span data-lang="de">Wir bieten vollständige Nachsorgeanleitungen und sind nach der Sitzung erreichbar.</span>
+        <span data-lang="ru">Предоставляем полное руководство по уходу и остаёмся на связи после сеанса.</span>
+      </p>
+    </div>
+    <div class="adv-card reveal" style="transition-delay:.5s">
+      <div class="adv-num">06</div>
+      <div class="adv-icon">◇</div>
+      <div class="adv-title">
+        <span data-lang="cs" class="active-lang">Skvělá poloha</span>
+        <span data-lang="en">Great location</span>
+        <span data-lang="de">Tolle Lage</span>
+        <span data-lang="ru">Отличное расположение</span>
+      </div>
+      <p class="adv-text">
+        <span data-lang="cs" class="active-lang">Nacházíme se v Praze 10 – Vršovicích, snadno dostupné MHD z celé Prahy.</span>
+        <span data-lang="en">Located in Prague 10 – Vršovice, easily accessible by public transport from all over Prague.</span>
+        <span data-lang="de">In Prag 10 – Vršovice, gut mit öffentlichen Verkehrsmitteln aus ganz Prag erreichbar.</span>
+        <span data-lang="ru">Расположены в Праге 10 – Вршовице, удобно добираться на общественном транспорте.</span>
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- GALLERY MARQUEE -->
+<section id="gallery">
+  <div class="gallery-label reveal">
+    <div class="section-label">
+      <span data-lang="cs" class="active-lang">Portfolio</span>
+      <span data-lang="en">Portfolio</span>
+      <span data-lang="de">Portfolio</span>
+      <span data-lang="ru">Портфолио</span>
+    </div>
+  </div>
+  <div style="overflow:hidden">
+    <div class="marquee-wrap">
+      <!-- cards ×2 for seamless loop -->
+      <div class="gallery-item"><div class="gallery-item-bg gi-1">
+        <svg viewBox="0 0 280 350" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="140" cy="175" r="100" fill="none" stroke="rgba(192,57,43,.3)" stroke-width="1"/>
+          <circle cx="140" cy="175" r="70" fill="none" stroke="rgba(240,235,224,.1)" stroke-width=".5"/>
+          <line x1="40" y1="175" x2="240" y2="175" stroke="rgba(192,57,43,.2)" stroke-width=".5"/>
+          <line x1="140" y1="75" x2="140" y2="275" stroke="rgba(192,57,43,.2)" stroke-width=".5"/>
+          <polygon points="140,100 165,155 225,155 178,190 195,245 140,210 85,245 102,190 55,155 115,155" fill="none" stroke="rgba(240,235,224,.15)" stroke-width=".5"/>
+        </svg>
+      </div><div class="gallery-item-overlay"><div class="gallery-item-label">Geometric</div></div></div>
+
+      <div class="gallery-item"><div class="gallery-item-bg gi-2">
+        <svg viewBox="0 0 280 350" xmlns="http://www.w3.org/2000/svg">
+          <path d="M140 60 C80 80 50 140 60 200 C70 260 120 300 140 300 C160 300 210 260 220 200 C230 140 200 80 140 60Z" fill="none" stroke="rgba(240,235,224,.12)" stroke-width=".8"/>
+          <path d="M140 80 C90 100 70 150 78 200 C86 250 120 285 140 285" fill="none" stroke="rgba(192,57,43,.25)" stroke-width=".5" stroke-dasharray="4 4"/>
+          <circle cx="140" cy="175" r="30" fill="none" stroke="rgba(240,235,224,.08)" stroke-width=".5"/>
+          <path d="M110 130 Q140 90 170 130 Q200 170 170 210 Q140 250 110 210 Q80 170 110 130Z" fill="none" stroke="rgba(192,57,43,.15)" stroke-width=".5"/>
+        </svg>
+      </div><div class="gallery-item-overlay"><div class="gallery-item-label">Blackwork</div></div></div>
+
+      <div class="gallery-item"><div class="gallery-item-bg gi-3">
+        <svg viewBox="0 0 280 350" xmlns="http://www.w3.org/2000/svg">
+          <g transform="translate(140,175)">
+            <line x1="-80" y1="0" x2="80" y2="0" stroke="rgba(240,235,224,.1)" stroke-width=".5"/>
+            <line x1="0" y1="-80" x2="0" y2="80" stroke="rgba(240,235,224,.1)" stroke-width=".5"/>
+            <line x1="-57" y1="-57" x2="57" y2="57" stroke="rgba(192,57,43,.15)" stroke-width=".5"/>
+            <line x1="57" y1="-57" x2="-57" y2="57" stroke="rgba(192,57,43,.15)" stroke-width=".5"/>
+            <polygon points="0,-90 52,-45 52,45 0,90 -52,45 -52,-45" fill="none" stroke="rgba(240,235,224,.18)" stroke-width=".8"/>
+            <polygon points="0,-60 35,-30 35,30 0,60 -35,30 -35,-30" fill="none" stroke="rgba(192,57,43,.2)" stroke-width=".5"/>
+            <circle r="20" fill="none" stroke="rgba(240,235,224,.12)" stroke-width=".5"/>
+          </g>
+        </svg>
+      </div><div class="gallery-item-overlay"><div class="gallery-item-label">Minimalism</div></div></div>
+
+      <div class="gallery-item"><div class="gallery-item-bg gi-4">
+        <svg viewBox="0 0 280 350" xmlns="http://www.w3.org/2000/svg">
+          <path d="M140 50 Q200 100 210 175 Q200 250 140 290 Q80 250 70 175 Q80 100 140 50Z" fill="none" stroke="rgba(184,150,62,.2)" stroke-width=".8"/>
+          <path d="M140 80 Q180 120 188 175 Q180 230 140 260 Q100 230 92 175 Q100 120 140 80Z" fill="none" stroke="rgba(184,150,62,.15)" stroke-width=".5"/>
+          <circle cx="140" cy="175" r="15" fill="rgba(184,150,62,.08)" stroke="rgba(184,150,62,.3)" stroke-width=".5"/>
+          <path d="M100 120 L140 80 L180 120" fill="none" stroke="rgba(240,235,224,.08)" stroke-width=".5"/>
+          <path d="M100 230 L140 270 L180 230" fill="none" stroke="rgba(240,235,224,.08)" stroke-width=".5"/>
+        </svg>
+      </div><div class="gallery-item-overlay"><div class="gallery-item-label">Fine Line</div></div></div>
+
+      <div class="gallery-item"><div class="gallery-item-bg gi-5">
+        <svg viewBox="0 0 280 350" xmlns="http://www.w3.org/2000/svg">
+          <path d="M140 60 L200 130 L200 220 L140 290 L80 220 L80 130Z" fill="none" stroke="rgba(192,57,43,.2)" stroke-width=".8"/>
+          <path d="M140 90 L180 145 L180 205 L140 260 L100 205 L100 145Z" fill="none" stroke="rgba(240,235,224,.1)" stroke-width=".5"/>
+          <circle cx="140" cy="175" r="40" fill="none" stroke="rgba(192,57,43,.15)" stroke-width=".5" stroke-dasharray="6 3"/>
+          <path d="M120 155 L140 130 L160 155 L160 195 L140 220 L120 195Z" fill="rgba(192,57,43,.06)" stroke="rgba(192,57,43,.2)" stroke-width=".5"/>
+        </svg>
+      </div><div class="gallery-item-overlay"><div class="gallery-item-label">Neo-Traditional</div></div></div>
+
+      <!-- duplicate for loop -->
+      <div class="gallery-item"><div class="gallery-item-bg gi-1">
+        <svg viewBox="0 0 280 350" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="140" cy="175" r="100" fill="none" stroke="rgba(192,57,43,.3)" stroke-width="1"/>
+          <circle cx="140" cy="175" r="70" fill="none" stroke="rgba(240,235,224,.1)" stroke-width=".5"/>
+          <line x1="40" y1="175" x2="240" y2="175" stroke="rgba(192,57,43,.2)" stroke-width=".5"/>
+          <line x1="140" y1="75" x2="140" y2="275" stroke="rgba(192,57,43,.2)" stroke-width=".5"/>
+          <polygon points="140,100 165,155 225,155 178,190 195,245 140,210 85,245 102,190 55,155 115,155" fill="none" stroke="rgba(240,235,224,.15)" stroke-width=".5"/>
+        </svg>
+      </div><div class="gallery-item-overlay"><div class="gallery-item-label">Geometric</div></div></div>
+
+      <div class="gallery-item"><div class="gallery-item-bg gi-2">
+        <svg viewBox="0 0 280 350"><path d="M140 60 C80 80 50 140 60 200 C70 260 120 300 140 300 C160 300 210 260 220 200 C230 140 200 80 140 60Z" fill="none" stroke="rgba(240,235,224,.12)" stroke-width=".8"/><circle cx="140" cy="175" r="30" fill="none" stroke="rgba(240,235,224,.08)" stroke-width=".5"/></svg>
+      </div><div class="gallery-item-overlay"><div class="gallery-item-label">Blackwork</div></div></div>
+
+      <div class="gallery-item"><div class="gallery-item-bg gi-3">
+        <svg viewBox="0 0 280 350"><g transform="translate(140,175)"><line x1="-80" y1="0" x2="80" y2="0" stroke="rgba(240,235,224,.1)" stroke-width=".5"/><line x1="0" y1="-80" x2="0" y2="80" stroke="rgba(240,235,224,.1)" stroke-width=".5"/><polygon points="0,-90 52,-45 52,45 0,90 -52,45 -52,-45" fill="none" stroke="rgba(240,235,224,.18)" stroke-width=".8"/></g></svg>
+      </div><div class="gallery-item-overlay"><div class="gallery-item-label">Minimalism</div></div></div>
+
+      <div class="gallery-item"><div class="gallery-item-bg gi-4">
+        <svg viewBox="0 0 280 350"><path d="M140 50 Q200 100 210 175 Q200 250 140 290 Q80 250 70 175 Q80 100 140 50Z" fill="none" stroke="rgba(184,150,62,.2)" stroke-width=".8"/><circle cx="140" cy="175" r="15" fill="rgba(184,150,62,.08)" stroke="rgba(184,150,62,.3)" stroke-width=".5"/></svg>
+      </div><div class="gallery-item-overlay"><div class="gallery-item-label">Fine Line</div></div></div>
+
+      <div class="gallery-item"><div class="gallery-item-bg gi-5">
+        <svg viewBox="0 0 280 350"><path d="M140 60 L200 130 L200 220 L140 290 L80 220 L80 130Z" fill="none" stroke="rgba(192,57,43,.2)" stroke-width=".8"/><circle cx="140" cy="175" r="40" fill="none" stroke="rgba(192,57,43,.15)" stroke-width=".5" stroke-dasharray="6 3"/></svg>
+      </div><div class="gallery-item-overlay"><div class="gallery-item-label">Neo-Traditional</div></div></div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- SERVICES -->
+<section id="services">
+  <div class="services-header reveal">
+    <div>
+      <div class="section-label">
+        <span data-lang="cs" class="active-lang">Co nabízíme</span>
+        <span data-lang="en">What we offer</span>
+        <span data-lang="de">Was wir anbieten</span>
+        <span data-lang="ru">Что мы предлагаем</span>
+      </div>
+      <h2 class="section-title">
+        <span data-lang="cs" class="active-lang">NAŠE<br>SLUŽBY</span>
+        <span data-lang="en">OUR<br>SERVICES</span>
+        <span data-lang="de">UNSERE<br>LEISTUNGEN</span>
+        <span data-lang="ru">НАШИ<br>УСЛУГИ</span>
+      </h2>
+    </div>
+  </div>
+  <div class="services-grid">
+    <div class="service-card reveal">
+      <div class="service-tag">01</div>
+      <div class="service-name">
+        <span data-lang="cs" class="active-lang">Vlastní design</span>
+        <span data-lang="en">Custom Design</span>
+        <span data-lang="de">Individuelles Design</span>
+        <span data-lang="ru">Авторский дизайн</span>
+      </div>
+      <p class="service-desc">
+        <span data-lang="cs" class="active-lang">Navrhneme vám tetování na míru přímo pro vás. Konzultace a kresba jsou součástí procesu.</span>
+        <span data-lang="en">We design a tattoo tailored specifically for you. Consultation and drawing are part of the process.</span>
+        <span data-lang="de">Wir gestalten ein Tattoo speziell für Sie. Beratung und Zeichnung sind Teil des Prozesses.</span>
+        <span data-lang="ru">Создадим тату, разработанный специально для вас. Консультация и эскиз входят в процесс.</span>
+      </p>
+      <div class="service-price">
+        <span data-lang="cs" class="active-lang">Od 1 500 Kč <span>/ hodina</span></span>
+        <span data-lang="en">From 1 500 CZK <span>/ hour</span></span>
+        <span data-lang="de">Ab 1 500 CZK <span>/ Stunde</span></span>
+        <span data-lang="ru">От 1 500 CZK <span>/ час</span></span>
+      </div>
+      <div class="service-arrow">→</div>
+    </div>
+
+    <div class="service-card reveal" style="transition-delay:.1s">
+      <div class="service-tag">02</div>
+      <div class="service-name">Blackwork</div>
+      <p class="service-desc">
+        <span data-lang="cs" class="active-lang">Výrazné, odvážné tetování v čistě černém inkoustu. Ideální pro geometrické a tribální vzory.</span>
+        <span data-lang="en">Bold, striking tattoos in pure black ink. Ideal for geometric and tribal patterns.</span>
+        <span data-lang="de">Ausdrucksstarke Tattoos in reiner schwarzer Tinte. Ideal für geometrische und tribale Muster.</span>
+        <span data-lang="ru">Выразительные тату в чистом чёрном чернила. Идеально для геометрических и трибальных узоров.</span>
+      </p>
+      <div class="service-price">
+        <span data-lang="cs" class="active-lang">Od 2 000 Kč <span>/ hodina</span></span>
+        <span data-lang="en">From 2 000 CZK <span>/ hour</span></span>
+        <span data-lang="de">Ab 2 000 CZK <span>/ Stunde</span></span>
+        <span data-lang="ru">От 2 000 CZK <span>/ час</span></span>
+      </div>
+      <div class="service-arrow">→</div>
+    </div>
+
+    <div class="service-card reveal" style="transition-delay:.2s">
+      <div class="service-tag">03</div>
+      <div class="service-name">
+        <span data-lang="cs" class="active-lang">Realismus</span>
+        <span data-lang="en">Realism</span>
+        <span data-lang="de">Realismus</span>
+        <span data-lang="ru">Реализм</span>
+      </div>
+      <p class="service-desc">
+        <span data-lang="cs" class="active-lang">Fotograficky přesné portréty a motivy. Vyžaduje čas, ale výsledek ohromí každého.</span>
+        <span data-lang="en">Photo-realistic portraits and motifs. Takes time, but the result amazes everyone.</span>
+        <span data-lang="de">Fotorealistisch Porträts und Motive. Braucht Zeit, aber das Ergebnis beeindruckt alle.</span>
+        <span data-lang="ru">Фотореалистичные портреты и мотивы. Требует времени, но результат восхищает всех.</span>
+      </p>
+      <div class="service-price">
+        <span data-lang="cs" class="active-lang">Od 2 500 Kč <span>/ hodina</span></span>
+        <span data-lang="en">From 2 500 CZK <span>/ hour</span></span>
+        <span data-lang="de">Ab 2 500 CZK <span>/ Stunde</span></span>
+        <span data-lang="ru">От 2 500 CZK <span>/ час</span></span>
+      </div>
+      <div class="service-arrow">→</div>
+    </div>
+
+    <div class="service-card reveal" style="transition-delay:.3s">
+      <div class="service-tag">04</div>
+      <div class="service-name">
+        <span data-lang="cs" class="active-lang">Cover-up</span>
+        <span data-lang="en">Cover-up</span>
+        <span data-lang="de">Cover-up</span>
+        <span data-lang="ru">Перекрытие тату</span>
+      </div>
+      <p class="service-desc">
+        <span data-lang="cs" class="active-lang">Přeměníme stará nebo nezdařilá tetování v nová umělecká díla. Konzultace zdarma.</span>
+        <span data-lang="en">We transform old or failed tattoos into new works of art. Free consultation.</span>
+        <span data-lang="de">Wir verwandeln alte oder missglückte Tattoos in neue Kunstwerke. Kostenlose Beratung.</span>
+        <span data-lang="ru">Превратим старые или неудачные тату в новые произведения искусства. Консультация бесплатно.</span>
+      </p>
+      <div class="service-price">
+        <span data-lang="cs" class="active-lang">Konzultace zdarma</span>
+        <span data-lang="en">Free consultation</span>
+        <span data-lang="de">Kostenlose Beratung</span>
+        <span data-lang="ru">Консультация бесплатно</span>
+      </div>
+      <div class="service-arrow">→</div>
+    </div>
+
+    <div class="service-card reveal" style="transition-delay:.4s">
+      <div class="service-tag">05</div>
+      <div class="service-name">
+        <span data-lang="cs" class="active-lang">Piercing</span>
+        <span data-lang="en">Piercing</span>
+        <span data-lang="de">Piercing</span>
+        <span data-lang="ru">Пирсинг</span>
+      </div>
+      <p class="service-desc">
+        <span data-lang="cs" class="active-lang">Profesionální piercing s použitím sterilizovaných nástrojů a certifikovaných šperků.</span>
+        <span data-lang="en">Professional piercing using sterilized instruments and certified jewelry.</span>
+        <span data-lang="de">Professionelles Piercing mit sterilisierten Instrumenten und zertifiziertem Schmuck.</span>
+        <span data-lang="ru">Профессиональный пирсинг с использованием стерилизованных инструментов и сертифицированных украшений.</span>
+      </p>
+      <div class="service-price">
+        <span data-lang="cs" class="active-lang">Od 500 Kč</span>
+        <span data-lang="en">From 500 CZK</span>
+        <span data-lang="de">Ab 500 CZK</span>
+        <span data-lang="ru">От 500 CZK</span>
+      </div>
+      <div class="service-arrow">→</div>
+    </div>
+
+    <div class="service-card reveal" style="transition-delay:.5s">
+      <div class="service-tag">06</div>
+      <div class="service-name">
+        <span data-lang="cs" class="active-lang">Korekce</span>
+        <span data-lang="en">Touch-up</span>
+        <span data-lang="de">Nachbearbeitung</span>
+        <span data-lang="ru">Коррекция</span>
+      </div>
+      <p class="service-desc">
+        <span data-lang="cs" class="active-lang">Oživíme vybledlá tetování a doladíme detaily. První korekce u nás je zdarma.</span>
+        <span data-lang="en">We refresh faded tattoos and refine details. First touch-up with us is free.</span>
+        <span data-lang="de">Wir frischen verblasste Tattoos auf. Erste Nachbearbeitung bei uns ist kostenlos.</span>
+        <span data-lang="ru">Освежим выцветшие тату и доработаем детали. Первая коррекция у нас — бесплатно.</span>
+      </p>
+      <div class="service-price">
+        <span data-lang="cs" class="active-lang">1. korekce zdarma</span>
+        <span data-lang="en">1st touch-up free</span>
+        <span data-lang="de">1. Nachbearbeitung kostenlos</span>
+        <span data-lang="ru">1-я коррекция бесплатно</span>
+      </div>
+      <div class="service-arrow">→</div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- BOOKING / CONTACT -->
+<section id="booking">
+  <div class="booking-inner">
+    <div class="booking-text reveal">
+      <div class="section-label">
+        <span data-lang="cs" class="active-lang">Kontakt & rezervace</span>
+        <span data-lang="en">Contact & booking</span>
+        <span data-lang="de">Kontakt & Buchung</span>
+        <span data-lang="ru">Контакт & запись</span>
+      </div>
+      <h2 class="section-title">
+        <span data-lang="cs" class="active-lang">ZAČNĚME<br>TVOŘIT</span>
+        <span data-lang="en">LET'S START<br>CREATING</span>
+        <span data-lang="de">LASS UNS<br>KREIEREN</span>
+        <span data-lang="ru">НАЧНЁМ<br>ТВОРИТЬ</span>
+      </h2>
+      <p style="margin-top:2rem">
+        <span data-lang="cs" class="active-lang">Kontaktujte nás a domluvte si konzultaci. Rádi si vyslyšíme vaši vizi a proměníme ji ve skutečnost.</span>
+        <span data-lang="en">Contact us and arrange a consultation. We'd love to hear your vision and turn it into reality.</span>
+        <span data-lang="de">Kontaktieren Sie uns und vereinbaren Sie eine Beratung. Wir hören gerne Ihre Vision.</span>
+        <span data-lang="ru">Свяжитесь с нами и договоритесь о консультации. Мы с радостью выслушаем вашу идею.</span>
+      </p>
+      <div class="booking-contact">
+        <a href="tel:+420605421310" class="contact-item">
+          <span class="contact-icon">📞</span>
+          +420 605 421 310
+        </a>
+        <a href="https://www.facebook.com/BANGAtelier/" class="contact-item" target="_blank">
+          <span class="contact-icon">f</span>
+          facebook.com/BANGAtelier
+        </a>
+        <div class="contact-item">
+          <span class="contact-icon">📍</span>
+          Slovinská 652/19, Praha 10 – Vršovice
+        </div>
+        <div class="contact-item">
+          <span class="contact-icon">🕐</span>
+          <span>
+            <span data-lang="cs" class="active-lang">Po–Pá: 10:00–20:00 · So: 10:00–17:00</span>
+            <span data-lang="en">Mon–Fri: 10:00–20:00 · Sat: 10:00–17:00</span>
+            <span data-lang="de">Mo–Fr: 10:00–20:00 · Sa: 10:00–17:00</span>
+            <span data-lang="ru">Пн–Пт: 10:00–20:00 · Сб: 10:00–17:00</span>
+          </span>
+        </div>
+      </div>
+    </div>
+    <div class="booking-form reveal" style="transition-delay:.2s">
+      <div class="form-row">
+        <div class="form-field">
+          <input type="text" placeholder="
+            ">
+        </div>
+        <div class="form-field">
+          <input type="email" placeholder="Email">
+        </div>
+      </div>
+      <div class="form-field">
+        <select>
+          <option value="" disabled selected>
+            <span data-lang="cs" class="active-lang">Vyberte službu</span>
+          </option>
+          <option>Custom Design</option>
+          <option>Blackwork</option>
+          <option>Realism / Реализм</option>
+          <option>Cover-up</option>
+          <option>Piercing</option>
+          <option>Touch-up / Korekce</option>
+        </select>
+      </div>
+      <div class="form-field">
+        <textarea placeholder="
+          "></textarea>
+      </div>
+      <button class="btn-primary" style="width:100%;text-align:center;border:none" onclick="sendForm()">
+        <span data-lang="cs" class="active-lang">Odeslat zprávu</span>
+        <span data-lang="en">Send message</span>
+        <span data-lang="de">Nachricht senden</span>
+        <span data-lang="ru">Отправить сообщение</span>
+      </button>
+      <p id="form-success" style="display:none;margin-top:1rem;font-size:.8rem;color:var(--gold);text-align:center;letter-spacing:.1em">
+        <span data-lang="cs" class="active-lang">✓ Zpráva odeslána! Brzy vás kontaktujeme.</span>
+        <span data-lang="en">✓ Message sent! We'll contact you soon.</span>
+        <span data-lang="de">✓ Nachricht gesendet! Wir melden uns bald.</span>
+        <span data-lang="ru">✓ Сообщение отправлено! Скоро свяжемся с вами.</span>
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- MAP -->
+<section id="map-section">
+  <div class="map-header reveal">
+    <div class="section-label">
+      <span data-lang="cs" class="active-lang">Kde nás najdete</span>
+      <span data-lang="en">Where to find us</span>
+      <span data-lang="de">Wo Sie uns finden</span>
+      <span data-lang="ru">Как нас найти</span>
+    </div>
+  </div>
+  <div class="map-wrap reveal">
+    <iframe
+      id="gmap"
+      src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d2561.7!2d14.4561!3d50.0704174!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x470b937951a3dcb3%3A0xe9d6b7c639242413!2sBANG%20Atelier%20tattoo!5e0!3m2!1sen!2scz!4v1715000000000!5m2!1sen!2scz"
+      allowfullscreen="" loading="lazy"
+      referrerpolicy="no-referrer-when-downgrade"
+      style="border:0"
+      title="BANG Atelier tattoo map">
+    </iframe>
+    <div class="map-overlay-info">
+      <div class="map-studio-name">BANG Atelier</div>
+      <div class="map-studio-addr">Slovinská 652/19<br>Praha 10 – Vršovice, 101 00</div>
+      <div class="map-hours">
+        <div class="map-hours-item"><strong data-lang="cs" class="active-lang">Po–Pá</strong><strong data-lang="en">Mon–Fri</strong><strong data-lang="de">Mo–Fr</strong><strong data-lang="ru">Пн–Пт</strong> · 10:00–20:00</div>
+        <div class="map-hours-item"><strong data-lang="cs" class="active-lang">So</strong><strong data-lang="en">Sat</strong><strong data-lang="de">Sa</strong><strong data-lang="ru">Сб</strong> · 10:00–17:00</div>
+        <div class="map-hours-item" style="color:var(--red);font-size:.65rem;margin-top:.5rem">📞 +420 605 421 310</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div>
+    <div class="footer-logo">BANG<span>.</span></div>
+    <div style="font-size:.65rem;letter-spacing:.1em;color:rgba(240,235,224,.25);margin-top:.5rem">
+      Slovinská 652/19, Praha 10
+    </div>
+  </div>
+  <div class="footer-copy">
+    © 2024 BANG Atelier Tattoo<br>
+    <span style="color:rgba(240,235,224,.15)">All rights reserved</span>
+  </div>
+  <div class="footer-socials">
+    <a href="https://www.facebook.com/BANGAtelier/" class="social-link" target="_blank">FB</a>
+    <a href="tel:+420605421310" class="social-link">☎</a>
+    <a href="#hero" class="social-link" title="Back to top">↑</a>
+  </div>
+</footer>
+
+<script>
+// ── LOADER ──
+window.addEventListener('load', () => {
+  setTimeout(() => {
+    const loader = document.getElementById('loader');
+    loader.style.transition = 'opacity .8s, transform .8s';
+    loader.style.opacity = '0';
+    loader.style.transform = 'translateY(-20px)';
+    setTimeout(() => loader.style.display = 'none', 800);
+  }, 2200);
+});
+
+// ── CURSOR ──
+const cur = document.getElementById('cursor');
+const ring = document.getElementById('cursor-ring');
+if (cur && ring) {
+  let rx = 0, ry = 0, cx = 0, cy = 0;
+  document.addEventListener('mousemove', e => {
+    cx = e.clientX; cy = e.clientY;
+    cur.style.left = cx + 'px'; cur.style.top = cy + 'px';
+  });
+  function animRing() {
+    rx += (cx - rx) * .15; ry += (cy - ry) * .15;
+    ring.style.left = rx + 'px'; ring.style.top = ry + 'px';
+    requestAnimationFrame(animRing);
+  }
+  animRing();
+}
+
+// ── NAV SCROLL ──
+const navbar = document.getElementById('navbar');
+window.addEventListener('scroll', () => {
+  navbar.classList.toggle('scrolled', window.scrollY > 60);
+});
+
+// ── MOBILE MENU ──
+function toggleMenu() {
+  const links = document.getElementById('navLinks');
+  const ham = document.getElementById('hamburger');
+  links.classList.toggle('mobile-open');
+  ham.classList.toggle('open');
+}
+document.getElementById('navLinks').addEventListener('click', e => {
+  if (e.target.tagName === 'A') {
+    document.getElementById('navLinks').classList.remove('mobile-open');
+    document.getElementById('hamburger').classList.remove('open');
+  }
+});
+
+// ── LANGUAGE ──
+let currentLang = 'cs';
+function setLang(lang) {
+  currentLang = lang;
+  document.querySelectorAll('[data-lang]').forEach(el => {
+    el.classList.toggle('active-lang', el.dataset.lang === lang);
+  });
+  document.querySelectorAll('.lang-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.textContent.toLowerCase() === lang);
+  });
+  document.documentElement.lang = lang;
+  // Update form placeholders
+  const names = { cs:'Jméno', en:'Name', de:'Name', ru:'Имя' };
+  const msgs  = { cs:'Vaše zpráva / idea...', en:'Your message / idea...', de:'Ihre Nachricht / Idee...', ru:'Ваше сообщение / идея...' };
+  const svcs  = { cs:'Vyberte službu', en:'Select service', de:'Leistung wählen', ru:'Выберите услугу' };
+  document.querySelector('input[type=text]').placeholder = names[lang] || 'Name';
+  document.querySelector('textarea').placeholder = msgs[lang] || 'Message...';
+  const sel = document.querySelector('select option[disabled]');
+  if (sel) sel.textContent = svcs[lang] || 'Select service';
+}
+
+// ── SCROLL REVEAL ──
+const reveals = document.querySelectorAll('.reveal');
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      e.target.classList.add('visible');
+      observer.unobserve(e.target);
+    }
+  });
+}, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+reveals.forEach(el => observer.observe(el));
+
+// ── FORM ──
+function sendForm() {
+  const success = document.getElementById('form-success');
+  success.style.display = 'block';
+  setTimeout(() => success.style.display = 'none', 4000);
+}
+
+// ── PARALLAX HERO BG ──
+window.addEventListener('scroll', () => {
+  const sy = window.scrollY;
+  const heroBg = document.querySelector('.hero-bg');
+  if (heroBg) heroBg.style.transform = `translateY(${sy * .3}px)`;
+  const heroGrid = document.querySelector('.hero-grid');
+  if (heroGrid) heroGrid.style.transform = `translateY(${sy * .15}px)`;
+});
+
+// ── INIT LANG ──
+setLang('cs');
+</script>
+</body>
+</html>
